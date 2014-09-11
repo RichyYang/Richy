@@ -1,0 +1,57 @@
+1、jdk1.6.10,tomcat安装,JAVA_HOME和TOMCAT_HOME环境变量分别是各自安装目录
+
+2、下载连接器isapi_redirect-1.2.28.dll,下载地址http://www.apache.org/dist/tomcat/tomcat-connectors/jk/binaries/win32/，在C:\tomcat\bin目录下建立jk文件夹,将isapi_redirect-1.2.28.dll文件拷贝进去
+
+3、在tomcat下的conf目录下创建workers.properties和uriworkermap.properties两个文件
+workers.properties
+——————————————————————————————————————
+workers.tomcat_home=c:\Tomcat                   #让mod_jk模块知道TOMCAT
+workers.java_home=c:\jdk1.6.0_10                #让mod_jk模块知道JDK
+ps= \                                           #指定文件路径分隔符
+worker.list=worker1
+worker.worker1.port=8009                        #工作端口
+worker.worker1.host=localhost                   #TOMCAt服务器地址
+worker.worker1.type=ajp13                       #类型
+worker.worker1.lbfactor=1                       #负载平衡因数
+——————————————————————————————————————
+
+uriworkermap.properties
+——————————————————————————————————————
+/*.do=worker1             #所有*.do访问向tomcat转发
+/*.jsp=worker1            #所有*.jsp访问向tomcat转发
+!/*.gif=worker1           #所有的gif文件都不向tomcat转发，而由IIS处理
+!/*.css=worker1           #所有的gif文件都不向tomcat转发，而由IIS处理
+!/*.html=worker1          #所有的gif文件都不向tomcat转发，而由IIS处理
+——————————————————————————————————————
+
+4、修改注册表：创建iis_tomcat.reg注册表文件
+iis_tomcat.reg
+——————————————————————————————————————
+Windows Registry Editor Version 5.00
+ 
+[HKEY_LOCAL_MACHINE\SOFTWARE\Apache Software Foundation\Jakarta Isapi Redirector\1.0]
+"extension_uri"="/jakarta/isapi_redirect-1.2.28.dll"
+"log_file"="c:\\tomcat\\logs\\isapi.log "
+"worker_file"="c:\\tomcat\\conf\\workers.properties"
+"worker_mount_file"="c:\\tomcat\\conf\\uriworkermap.properties"
+"log_level"="debug"
+——————————————————————————————————————
+注意："log_level"="debug"日志增长很快，调试好后可改为"log_level"="realease"
+
+5、设置IIS默认网站的IsApi筛选器
+添加一个isapi筛选器，名称tomcat，指向文件c:\tomcat\bin\jk\isapi_redirect-1.2.28.dll。
+
+6、在IIS中创建虚拟目录jakarta
+虚拟目录名称必须为jakarta，指向c:\tomcat\bin\jk，也就是isapi_redirect-1.2.28.dll所在目录。
+
+7、添加web服务扩展
+添加新的web扩展，指向指向文件c:\tomcat\bin\jk\isapi_redirect-1.2.28.dll，并设置为允许。
+
+8、重启IIS和Tomcat进行测试
+重启IIS和Tomcat。先看看IIS默认网站的IsApi的tomcat是否为绿色。
+如果不是，则访问http://127.0.0.1:8080，http://127.0.0.1:8080/jsp-examples/，http://127.0.0.1，把IIS和Tomcat的都访问访问，之后再看就是绿色的了，之后即使重启计算机也是绿色的，如果有问题在事件查看器中可以看到筛选器的错误说明。
+绿色后就可以通过IIS访问Tomcat了，包括Tomcat的虚拟路径也可以。
+IIS：     http://127.0.0.1/
+tomcat：  http://127.0.0.1/index.jsp
+注意只有在workers.properties中描述的uri才能被转发到tomcat上。
+
